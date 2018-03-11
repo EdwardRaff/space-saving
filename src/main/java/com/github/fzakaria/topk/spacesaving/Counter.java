@@ -12,7 +12,7 @@ import javax.annotation.Nonnull;
  * {@link StreamSummary}
  * @param <T> The type of the item
  */
-class Counter<T> {
+public class Counter<T> {
 
     /**
      * The current value of the counter
