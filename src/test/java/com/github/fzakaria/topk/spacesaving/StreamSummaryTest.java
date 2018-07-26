@@ -9,6 +9,8 @@ import org.junit.Test;
 
 import java.net.URL;
 import java.util.List;
+import java.util.Random;
+import java.util.SortedSet;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -43,6 +45,38 @@ public class StreamSummaryTest {
         List<Counter<String>> top3 = streamSummary.getTopK(3);
         List<String> top3Items = top3.stream().map(Counter::getItem).collect(Collectors.toList());
         Assertions.assertThat(top3Items).containsExactly("a", "g", "f");
+    }
+    
+    @Test
+    public void testMerge() {
+        //100 counters
+        StreamSummary<String> ss_a = new StreamSummary<>(0.01);
+        StreamSummary<String> ss_b = new StreamSummary<>(0.01);
+        StreamSummary<String> ss_c = new StreamSummary<>(0.01);
+        int iterationRange = 200;
+        //lets make sure we will iterate more than the capacity
+        Assertions.assertThat(iterationRange).isGreaterThan(ss_a.getCapacity());
+        
+        for(int i = 0; i < 100; i++)
+        {
+            IntStream.range(0, 500).mapToObj(z->z+"").forEach(ss_a::offer);
+            IntStream.range(0, 510).mapToObj(z->z+"").forEach(ss_b::offer);
+            IntStream.range(0, 512).mapToObj(z->z+"").forEach(ss_c::offer);
+        }
+        IntStream.range(0, 200).mapToObj(i -> "f").forEach(ss_a::offer);
+        IntStream.range(0, 200).mapToObj(i -> "f").forEach(ss_b::offer);
+        IntStream.range(0, 200).mapToObj(i -> "f").forEach(ss_c::offer);
+        IntStream.range(0, 2100).mapToObj(i -> "a").forEach(ss_a::offer);
+        IntStream.range(0, 2050).mapToObj(i -> "b").forEach(ss_b::offer);
+        IntStream.range(0, 2000).mapToObj(i -> "c").forEach(ss_c::offer);
+        
+        SortedSet<MergeCounter<String>> merged = StreamSummary.combine(ss_a.convert(), ss_b.convert(), 100);
+        merged = StreamSummary.combine(merged, ss_c.convert(), 100);
+//        List<Counter<String>> top4 = merged.getTopK(4);
+//        List<String> top4Items = top4.stream().map(Counter::getItem).collect(Collectors.toList());
+        List<String> top4Items = merged.stream().limit(4).map(s->s.item).collect(Collectors.toList());
+        Assertions.assertThat(top4Items).containsExactly("a", "b", "c", "f");
+        
     }
 
     /**
